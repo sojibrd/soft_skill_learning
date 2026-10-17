@@ -1,263 +1,196 @@
 "use client";
 
-import { useMemo, useState, type RefObject } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Check, PanelLeftClose, Search, X } from "lucide-react";
-import type { HeadingIndexEntry, NavGroup } from "../lib/content";
+import type { IndexBlock } from "../lib/plan";
+import { toBnDigits } from "../lib/dates";
+import { SITE } from "../lib/site";
+import { useMounted, useProgress } from "../hooks/useProgress";
 import ProgressReadout from "./ProgressReadout";
+import { PanelLeftClose, RefreshCw, X } from "./icons";
 
-export interface SidebarDocState {
-  /** পড়া হয়েছে কি না */
-  read: boolean;
-  drillsDone: number;
-  drillTotal: number;
+const PAGES = [
+  { href: "/", label: "আজ" },
+  { href: "/review/", label: "ঝালাই" },
+  { href: "/docs/", label: "ডক" },
+  { href: "/rules/", label: "নিয়ম" },
+];
+
+function isPageActive(path: string, href: string): boolean {
+  if (href === "/") return path === "/";
+  /* একটা ডকের পাতাও "ডক" ট্যাবের ভেতরে */
+  if (href === "/docs/") return path.startsWith("/doc");
+  return path.startsWith(href);
 }
 
-interface SidebarProps {
-  nav: NavGroup[];
-  headingIndex: HeadingIndexEntry[];
-  /** route → অবস্থা; Shell একবার হিসাব করে দুই mount-এ পাঠায় */
-  docState: Record<string, SidebarDocState>;
-  /** group id → পড়া/মোট */
-  groupCounts: Record<string, { read: number; total: number }>;
-  progressPercent: number;
-  /** শুধু drawer-এ — তালিকার বেরোনোর পথ */
+type SidebarProps = {
+  blocks: IndexBlock[];
+  /** শেষে `/` সহ pathname */
+  path: string;
+  /** যে দিন এখন পাতায় দেখানো — rail-এ জ্বলে */
+  selectedCode?: string;
+  /** আজকের দিন — "আজ" chip */
+  todayCode?: string;
+  /** আজকের ব্লক — "এখন" chip */
+  todaySlug?: string;
+  /** যে ব্লকের দিনগুলো খোলা — একবারে একটাই */
+  openSlug?: string;
+  percent: number;
+  done: number;
+  total: number;
+  dayCount: number;
+  /** শুধু drawer-এ — বেরোনোর পথ */
   onClose?: () => void;
-  /** শুধু rail-এ — তালিকা ভাঁজ করার পথ */
+  /** শুধু স্থায়ী rail-এ — ভাঁজ করা যায় */
   onCollapse?: () => void;
-  /** rail-এর input, যাতে `/` ও Ctrl+K যেকোনো জায়গা থেকে পৌঁছাতে পারে */
-  searchRef?: RefObject<HTMLInputElement | null>;
-  /** hydration-এর আগে কোনো progress সংখ্যা দেখানো যাবে না */
-  mounted: boolean;
-}
-
-function normalize(path: string): string {
-  return path.replace(/\/+$/, "") || "/";
-}
+};
 
 /**
- * স্তর → অধ্যায় নেভিগেশন, সাথে search।
+ * ব্লক → দিন সূচি, পাতার লিংক আর plan-এর gauge।
  *
- * একটাই কম্পোনেন্ট দুই জায়গায় বসে: `lg:` rail আর তার নিচের drawer। পার্থক্য
- * শুধু বেরোনোর পথে; দুটো আলাদা কম্পোনেন্ট মানে দুটো তালিকা সময়ের সাথে আলাদা
- * হয়ে যাওয়া।
+ * একই কম্পোনেন্ট rail আর drawer দুই জায়গায় — পার্থক্য শুধু বেরোনোর পথে।
+ * সব ব্লক সবসময় দেখা যায়; দিনগুলো শুধু খোলা ব্লকের। 🧠 Create a roadmap
  */
 export default function Sidebar({
-  nav,
-  headingIndex,
-  docState,
-  groupCounts,
-  progressPercent,
+  blocks,
+  path,
+  selectedCode,
+  todayCode,
+  todaySlug,
+  openSlug,
+  percent,
+  done,
+  total,
+  dayCount,
   onClose,
   onCollapse,
-  searchRef,
-  mounted,
 }: SidebarProps) {
-  const pathname = normalize(usePathname());
-  const onProgressPage = pathname.endsWith("/progress");
-  const [search, setSearch] = useState("");
-
-  const query = search.trim().toLowerCase();
-  const searching = query.length > 0;
-
-  /* খোঁজার সময় স্তরের গ্রুপিং বাদ — নইলে খালি স্তরের হেডিং শূন্যের উপরে দাঁড়িয়ে
-     থাকে, যেটা "এখানে কিছু নেই"-এর বদলে "ভাঙা" হিসেবে পড়ে। */
-  const { docMatches, headingMatches } = useMemo(() => {
-    if (!searching) return { docMatches: [], headingMatches: [] };
-
-    const docs = nav
-      .flatMap((group) => group.items.map((doc) => ({ ...doc, groupLabel: group.label })))
-      .filter(
-        (doc) =>
-          doc.title.toLowerCase().includes(query) ||
-          doc.groupLabel.toLowerCase().includes(query),
-      );
-
-    const headings = headingIndex.filter((entry) =>
-      entry.headingText.toLowerCase().includes(query),
-    );
-
-    return { docMatches: docs, headingMatches: headings };
-  }, [nav, headingIndex, query, searching]);
-
-  const noMatches = searching && docMatches.length === 0 && headingMatches.length === 0;
+  const mounted = useMounted();
+  const { doneCount } = useProgress();
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="seam-b flex items-center justify-between gap-2 px-4 py-3 shrink-0">
-        <Link href="/" onClick={onClose} className="flex items-center gap-2 min-w-0">
-          <span className="text-xl shrink-0" aria-hidden>
-            🧭
-          </span>
-          <span className="t-title text-sm truncate">সফট স্কিল</span>
+    <div className="flex h-full flex-col">
+      <div className="seam-b flex shrink-0 items-center justify-between gap-2 px-4 py-3">
+        <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-xl">{SITE.emoji}</span>
+          <span className="t-title truncate text-sm">{SITE.short}</span>
         </Link>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5">
           <Link
-            href="/progress/"
+            href="/sync/"
             onClick={onClose}
-            className={`control px-2.5 py-1 text-[11px] ${onProgressPage ? "control--primary" : ""}`}
+            className="control control--quiet p-1.5"
+            aria-label="একাধিক ডিভাইসে সিঙ্ক"
           >
-            অগ্রগতি
+            <RefreshCw size={14} />
           </Link>
-
           {onClose && (
-            <button
-              onClick={onClose}
-              className="control control--quiet p-1.5"
-              aria-label="সাইডবার বন্ধ করুন"
-            >
-              <X size={14} />
+            <button type="button" onClick={onClose} className="control control--quiet p-1.5" aria-label="সাইডবার বন্ধ করুন">
+              <X />
             </button>
           )}
-
           {onCollapse && (
             <button
+              type="button"
               onClick={onCollapse}
               className="control control--quiet p-1.5"
               aria-label="সূচিপত্র লুকান"
               aria-expanded
               aria-controls="site-sidebar"
             >
-              <PanelLeftClose size={14} />
+              <PanelLeftClose />
             </button>
           )}
         </div>
       </div>
 
-      <div className="px-4 pt-4 shrink-0 flex flex-col gap-4">
-        <ProgressReadout percent={mounted ? progressPercent : 0} />
+      <div className="flex shrink-0 flex-col gap-4 px-4 pt-4">
+        <nav className="grid grid-cols-4 gap-1" aria-label="পাতা">
+          {PAGES.map((page) => {
+            const active = isPageActive(path, page.href);
+            return (
+              <Link
+                key={page.href}
+                href={page.href}
+                onClick={onClose}
+                className="tab px-1 py-1.5 text-xs"
+                aria-selected={active}
+                aria-current={active ? "page" : undefined}
+              >
+                {page.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-        <div className="relative">
-          <span className="t-muted absolute left-2.5 top-2.5 flex pointer-events-none" aria-hidden>
-            <Search size={14} />
-          </span>
-          <input
-            ref={searchRef}
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              if (search) setSearch("");
-              else event.currentTarget.blur();
-            }}
-            placeholder="অধ্যায় বা বিষয় খুঁজুন..."
-            aria-label="অধ্যায় বা বিষয় খুঁজুন (শর্টকাট: / বা Ctrl+K)"
-            className="surface-well t-body w-full pl-8 pr-8 py-2 text-sm"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="control control--quiet absolute right-1.5 top-1.5 px-1.5 py-1"
-              aria-label="খোঁজা বাতিল"
-            >
-              <X size={12} />
-            </button>
-          ) : (
-            <span
-              className="t-caption t-mono hidden lg:inline absolute right-2.5 top-2 pointer-events-none select-none text-[11px]"
-              title="শর্টকাট: / অথবা Ctrl+K"
-            >
-              /
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="t-label">{toBnDigits(dayCount)} দিনের কাজ</span>
+            <span className="t-mono t-accent text-xs" suppressHydrationWarning>
+              {toBnDigits(done)}/{toBnDigits(total)} ({toBnDigits(percent)}%)
             </span>
-          )}
+          </div>
+          <ProgressReadout percent={percent} label={`${toBnDigits(dayCount)} দিনের অগ্রগতি`} />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {searching ? (
-          <div className="flex flex-col gap-5">
-            {noMatches && (
-              <div className="surface-well t-caption p-4 text-center">
-                &ldquo;{search}&rdquo; দিয়ে কিছু পাওয়া যায়নি।
-              </div>
-            )}
+        <div className="flex flex-col gap-4">
+          {blocks.map((block) => {
+            const blockIds = block.days.flatMap((day) => day.taskIds);
+            const blockDone = mounted ? doneCount(blockIds) : 0;
+            const blockHref = `/block/${block.slug}/`;
 
-            {docMatches.length > 0 && (
-              <div className="topic-group pb-4 flex flex-col gap-1.5">
-                <span className="t-label">অধ্যায় ({docMatches.length})</span>
-                {docMatches.map((doc) => (
-                  <Link
-                    key={doc.route}
-                    href={doc.route}
-                    onClick={onClose}
-                    aria-current={normalize(doc.route) === pathname ? "true" : undefined}
-                    className="row block px-3 py-2 text-xs truncate"
-                  >
-                    {doc.title}
-                  </Link>
-                ))}
-              </div>
-            )}
-
-            {headingMatches.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <span className="t-label">বিষয় ({headingMatches.length})</span>
-                {headingMatches.map((entry) => (
-                  <Link
-                    key={`${entry.docRoute}${entry.headingId}`}
-                    href={`${entry.docRoute}#${entry.headingId}`}
-                    onClick={onClose}
-                    className="row block px-3 py-2"
-                  >
-                    <span className="block text-xs truncate">{entry.headingText}</span>
-                    <span className="t-caption block truncate">{entry.docTitle}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {nav.map((group) => {
-              const counts = groupCounts[group.id] ?? { read: 0, total: group.items.length };
-
-              return (
-                <div key={group.id} className="topic-group pb-4">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <h4 className="t-strong text-sm min-w-0 truncate">{group.label}</h4>
-                    <span className="chip shrink-0" suppressHydrationWarning>
-                      {mounted ? counts.read : 0}/{counts.total}
+            return (
+              <div key={block.slug} className="topic-group pb-4">
+                <Link
+                  href={blockHref}
+                  onClick={onClose}
+                  aria-current={path === blockHref ? "true" : undefined}
+                  className="row mb-2 flex items-center justify-between gap-2 px-2 py-1.5 text-sm"
+                >
+                  <span className="min-w-0 truncate">
+                    {toBnDigits(block.num)} · {block.name}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {block.slug === todaySlug && <span className="chip chip--accent">এখন</span>}
+                    <span className="chip" suppressHydrationWarning>
+                      {toBnDigits(blockDone)}/{toBnDigits(blockIds.length)}
                     </span>
-                  </div>
+                  </span>
+                </Link>
 
-                  <div className="seam-l flex flex-col gap-1.5 pl-2 ml-1">
-                    {group.items.map((doc) => {
-                      const state = docState[doc.route];
-                      const active = normalize(doc.route) === pathname;
-                      const read = mounted && state?.read;
-
+                {block.slug === openSlug && (
+                  <div className="seam-l ml-1 flex flex-col gap-1 pl-2">
+                    {block.days.map((day) => {
+                      const dayDone = mounted ? doneCount(day.taskIds) : 0;
                       return (
                         <Link
-                          key={doc.route}
-                          href={doc.route}
+                          key={day.code}
+                          id={`day-row-${day.code}`}
+                          href={`/day/${day.code}/`}
                           onClick={onClose}
-                          aria-current={active ? "true" : undefined}
-                          className="row flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                          aria-current={day.code === selectedCode ? "true" : undefined}
+                          className="row flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs"
                         >
-                          <span className="flex min-w-0 items-center gap-1.5">
-                            <span className="w-3 shrink-0" aria-hidden suppressHydrationWarning>
-                              {read ? <Check size={11} /> : null}
-                            </span>
-                            <span className="truncate">{doc.title}</span>
+                          <span className="truncate">
+                            {day.label} {day.title}
                           </span>
-                          {state && state.drillTotal > 0 && (
-                            <span className="text-[10px] shrink-0" suppressHydrationWarning>
-                              ({mounted ? state.drillsDone : 0}/{state.drillTotal})
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {day.code === todayCode && <span className="chip chip--accent">আজ</span>}
+                            <span className="text-[10px]" suppressHydrationWarning>
+                              ({toBnDigits(dayDone)}/{toBnDigits(day.taskIds.length)})
                             </span>
-                          )}
+                          </span>
                         </Link>
                       );
                     })}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

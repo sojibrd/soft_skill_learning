@@ -1,46 +1,20 @@
 # soft_skill_learning — Agent Instructions
 
-সফট স্কিল শেখার বাংলা রোডম্যাপ। Next.js 16 + React 19 + TS + Tailwind v4 + react-markdown, static export → GitHub Pages।
-লাইভ: https://sojibrd.github.io/soft_skill_learning/
+সফট স্কিলের দিনভিত্তিক সাইট — ৯৪ দিন: ৯০ দিনে একটা করে drill, আর চার ব্লকের শেষে একটা করে ⚑। chassis `behavioural_interview_local_company` থেকে (২০২৬-১০-১৭); তিন repo-র পরিবার নয়, একটাই সাইট। তার আগে এটা ছিল পুরনো ছাঁচের রোডম্যাপ — অধ্যায়, drill-এর checkbox, `localStorage`-only।
 
-কোনো কাজ শুরুর আগে `README.md` পড়ুন — কাঠামো, ডক লেখার নিয়ম ও Theme Contract ওখানে।
-
-## Invariants
-
-- সব response বাংলায় দিন।
-- ব্যাখ্যা বাংলায়, technical term ইংরেজিতে।
-- Next.js 16 conventions কঠোরভাবে মানুন।
-
-## Content
-
-- ১৯টি ডক, ৪ স্তরে নির্ভরতার ক্রমে: `00-start` → `01-self` → `02-thinking` → `03-interpersonal` → `04-influence`। Leadership শেষে — ওটা আলাদা স্কিল নয়, বাকি সবের যোগফল।
-- প্রতিটি স্কিল-ডক ৫ সেকশন, এই ক্রমে: `## সংজ্ঞা` → `## কেন এটা কঠিন` → `## কীভাবে কাজ করে` → `## অনুশীলন` → `## মূল নিয়ম`।
-- **`## অনুশীলন` হুবহু এই heading।** এর প্রতিটি টপ-লেভেল `- ` বুলেট সাইটে একটা checkbox হয়। prefix-match করবেন না — নইলে `## অনুশীলন কীভাবে করবেন`-এর মতো heading drill সেকশন হিসেবে ধরা পড়বে।
-- route ও nav স্ক্যান থেকে **স্বয়ংক্রিয়** — কোথাও তালিকা হার্ডকোড নয়। নতুন ডক = স্তর-ফোল্ডারে পরের নম্বরের `.md`।
-- scanner শুধু `^\d\d-` ফোল্ডার নেয়, তাই `docs/plans/` নিজে থেকেই বাদ। নতুন স্তরের লেবেল `app/lib/content.ts`-এর `GROUP_LABELS`-এ।
-
-## Architecture
-
-- `app/lib/content.ts` সম্পূর্ণ **server-only** — client component থেকে কখনো import করবেন না।
-- **সরাসরি `localStorage` নয়** — সব progress কেবল `app/hooks/useProgress.ts` দিয়ে (`useSyncExternalStore`-ভিত্তিক)। static export-এ প্রথম render-এ storage থাকে না; সরাসরি পড়লে hydration mismatch।
-- Key স্কিমা: `ssl:v1:read`, `ssl:v1:drill`। বদলালে `v1` বাড়ান।
-- `page.tsx` পাতলা রাখুন — data এনে কম্পোনেন্টে পাঠাবে, নিজে UI লিখবে না।
-- **Shell `layout.tsx`-এ, page-এ নয়** — নইলে route বদলালে দুটো navigation কলাম আলাদা হয়ে যায়। `getNav()` / `getHeadingIndex()` / `getDrillCounts()` server-এ চলে, props হয়ে client `Shell`-এ যায়।
-- **TOC ও search একই ভিত্তি** — `extractHeadings()`। anchor id = `slugify(heading text)`, আর `Markdown.tsx`-এর `h2`/`h3` রেন্ডারার হুবহু একই নিয়মে id বসায়। নিয়ম দুটো আলাদা হলে লিংক নীরবে ভাঙে। `## অনুশীলন`-এর id `DrillList`-এ হাতে বসানো, কারণ ওটা Markdown-এর বাইরে রেন্ডার হয়।
-- Breakpoint: rail `lg:`, TOC `xl:`, Navbar `lg:hidden`। collapse key `ssl_nav_collapsed`।
-
-## Theme Contract — অলঙ্ঘনীয়
-
-`system_design`-এর dark-only *control-room* কনট্র্যাক্ট, ক্যানভাসের role বাদে।
-
-- কম্পোনেন্টে **কোনো ভিজ্যুয়াল ক্লাস নয়** — রঙ, `rounded-*`, `shadow-*`, `border-2`, `uppercase`, `tracking-*`, `font-bold` কোনোটাই না। সব role class-এ (`surface-panel`, `t-title`, `control`, `chip`, `row`, `gauge`)।
-- Tailwind শুধু লেআউটের জন্য।
-- অবস্থা যায় `aria-pressed` / `aria-current` / `data-state`-এ; চেহারা ঠিক করে CSS।
-- সাইট **dark-only** — `dark:` variant বা `.dark` ক্লাস নয়।
-- একমাত্র ব্যতিক্রম `.doc-prose` — markdown-এর raw element, সব মান `--t-doc-*` থেকে।
-- থিম বদলানোর একমাত্র জায়গা: `app/globals.css`-এর উপরের `@import "./themes/control-room.css";`
-
-যাচাই: `grep -rn "rounded-\|shadow-\|text-zinc\|bg-zinc\|uppercase\|font-bold\|dark:" app/components app/page.tsx` — আউটপুট খালি হওয়া উচিত।
+- **`guide/` = এই সাইটের নিজের ১৯টা অধ্যায়**, পুরনো `docs/` থেকে হুবহু, চার স্তরে নির্ভরতার ক্রমে (`guide/<nn>-<স্তর>/<nn>-<slug>.md`)। **সম্পাদনা নয়** — behavioural-এর নজির। ০০.০২ ("সাইট কীভাবে ব্যবহার করবেন") পুরনো সাইট বর্ণনা করে; যেটুকু এখন খাটে না, তা `docs/00-rules.md`-এ লেখা। অধ্যায়ের ভেতরের relative `.md` লিংক `app/lib/guide.ts` রেন্ডারের আগে `/doc/<স্তর>-<ডক>/`-এ বদলায় — chassis-এ এটা ছিল না, কারণ behavioural-এর গাইডে এমন লিংক নেই।
+- **`docs/` = plan** — `00-rules.md` আর ৪টা ব্লক, স্তরের ক্রমে; `00-start`-এর ৪টা drill ব্লক ১-এ। দিনের শিরোনাম = drill-এর bold শিরোনাম হুবহু (শেষের "।" বাদে), আর ৯০টা drill গাইডের ক্রমেই। দিনের নম্বর পরপর না হলে build ভাঙে; ফাইলে তারিখ নেই, "আজ" = ক্যালেন্ডারের তারিখ। `docs/plans/` পুরনো দুই প্ল্যান — `plan.ts` শুধু `^\d\d-.*\.md` নেয়, তাই সাইটে যায় না।
+- কাজে `(ডক ০৩.০১)` = `guide/`-এর স্তর.অধ্যায়; না মিললে **build ভাঙে**।
+- **একটা drill = একটা দিন, "আজ একবার" মাপে** (ব্যবহারকারী, ২০২৬-১০-১৭)। কাজের লেখা drill আর তার অধ্যায় থেকে — নতুন দাবি নয়। কাজের শেষে `পূর্ণ মাপে:` (কয়েক দিনের drill) বা `সুযোগ এলে:` (ঘটনা-নির্ভর) = গাইডের পুরো drill, টিকের শর্ত নয়।
+- **ঘটনা-নির্ভর drill** (প্রায় অর্ধেক — সমালোচনা পাওয়া, মিটিং, উপস্থাপনা) — কাজ = যেটুকু আজই করা যায়: শেষবারের ঘটনা খাতায় আর পরের বারের বাক্য। ঘটনা ব্যবহারকারীর হাতে থাকলে (প্রশংসা, প্রশ্ন, কাউকে জিজ্ঞেস) কাজ আজই। ব্যবহারকারীর সিদ্ধান্ত, ২০২৬-১০-১৭।
+- **🔁 মিশ্র** (ব্যবহারকারী, ২০২৬-১০-১৭) — ঝালাই ১/৪ = আবার করা, ২/৪–৪/৪ = নাম দেখে, গাইড না খুলে, ইংরেজিতে মুখে দুই বাক্য। কারণ: সব ঝালাই আবার করা হলে দিন ২২ থেকে রোজ প্রায় পাঁচটা আলাদা আচরণ। নির্দেশটা `app/components/ReviewList.tsx`-এর `reviewHow()` আর `Hint`-এ — chassis থেকে একমাত্র আচরণের বদল। একবারের লেখা বা সিদ্ধান্তের drill-এ 🔁 নেই — ৮০টা কাজে আছে।
+- ⚑ দিন: গাইড না খুলে, ইংরেজিতে, জোরে, ২ মিনিটে, রেকর্ড করে — ব্লকের অধ্যায়গুলোর তিনটা মূল নিয়ম আর নিজের একটা ঘটনা। 🔁 নেই।
+- **সময় ⏳** — দিনের ১০′ সপ্তাহে ৭ ঘণ্টার ভেতরে না বাইরে, আর বাকি learning সাইটের সাথে একসাথে না পরপর — ব্যবহারকারীর উত্তর বাকি। `suggestedStart` তাই `null`; কোনো plan-এর ঘর থেকে সময় কাটবেন না। `brainstorming/soft-technical-and-ai-skill.md` soft skill-এর সাইটকে "ফাঁদ" বলে — অমিলটা `brainstorming/thought-map.md`-এ ⏳; নিজে মীমাংসা করবেন না।
+- 🧠 নাম → `app/lib/principles.ts`, `postgres_learning`-এর কপি (`learning_to_learn`-এর ৫৭টা বিষয়, লিংক ঐ সাইটের লাইভ Pages-এ)। ওখানে বদলালে এখানেও।
+- Progress চার key (`ssl:v1:start`, `task`, `check`, `review`) — একমাত্র `app/hooks/useProgress.ts` দিয়ে; পঞ্চম key `ssl:v1:meta` শুধু sync-এর timestamp। prefix `ssl` পুরনো সাইটের; পুরনো `ssl:v1:read` আর `ssl:v1:drill` কোড পড়ে না, sync-ও করে না। কাজের লেখা বদলালে ঐ কাজের টিক হারায় (id = দিন + লেখার hash)।
+- **Cross-device sync** — বাকি সাইটের মতোই: `app/lib/supabase.ts`, `app/hooks/useSync(Key).ts`, `app/components/SyncSettings.tsx`, `app/sync/page.tsx` chassis থেকে হুবহু, নিজে থেকে বদলাবেন না। `site_prefix` = `SITE.storagePrefix` = `ssl`। `deploy.yml` `postgres_learning` থেকে; env নাম `NEXT_PUBLIC_SUPABASE_*` — বদলালে sync চুপচাপ মরে যাবে।
+- `app/lib/plan.ts` আর `app/lib/guide.ts` server-only।
+- **Theme contract অলঙ্ঘনীয়**, সাইট **dark-only**। যাচাই: `rg -n "rounded-|shadow-|text-zinc|bg-zinc|uppercase|font-bold|dark:" app/components app/page.tsx` — আউটপুট খালি।
 
 <!-- BEGIN:nextjs-agent-rules -->
 
