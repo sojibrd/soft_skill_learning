@@ -7,7 +7,7 @@ import { toBnDigits } from "../lib/dates";
 export const metadata: Metadata = { title: "ডক" };
 
 /**
- * এই সাইটের ১৯টা অধ্যায়, চার স্তরে — কোনটা plan-এর কোন দিনে আসে।
+ * এই সাইটের ২২টা অধ্যায়, চার স্তরে — কোনটা plan-এর কোন দিনে আসে।
  * রেফারেন্স; রোজ শুরু "আজ" থেকে। 🧠 Create a roadmap
  */
 export default function DocsPage() {
@@ -21,7 +21,7 @@ export default function DocsPage() {
       <header className="flex flex-col gap-2">
         <h1 className="t-title text-2xl sm:text-3xl">ডক</h1>
         <p className="t-body measure text-sm">
-          ১৯টা অধ্যায়, চার স্তরে নির্ভরতার ক্রমে, লেখা হুবহু। plan-এর দিনে আসে {toBnDigits(inPlan)}টা — chip-এ কয়টা কাজে।
+          ২২টা অধ্যায়, চার স্তরে নির্ভরতার ক্রমে; প্রতিটার শেষে উৎস। plan-এর দিনে আসে {toBnDigits(inPlan)}টা — chip-এ কয়টা কাজে।
           পড়া ইনপুট; গোনা হয় আসল কথোপকথনে drill করা।
         </p>
       </header>

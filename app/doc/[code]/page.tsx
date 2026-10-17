@@ -8,7 +8,7 @@ import { getDocUses } from "../../lib/plan";
 
 type Params = { code: string };
 
-/** ১৯টাই — plan-এ না থাকলেও পাতা থাকে, যাতে লিংক কখনো ভাঙে না */
+/** ২২টাই — plan-এ না থাকলেও পাতা থাকে, যাতে লিংক কখনো ভাঙে না */
 export function generateStaticParams(): Params[] {
   return getGuideDocs().map((doc) => ({ code: doc.code }));
 }
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 /**
- * একটা অধ্যায়: plan-এর কোন দিনের কোন কাজে আসে, তারপর `guide/`-এর লেখা হুবহু। পড়া
+ * একটা অধ্যায়: plan-এর কোন দিনের কোন কাজে আসে, তারপর `guide/`-এর পুরো লেখা। পড়া
  * ইনপুট — কাজ হলো drill-টা আসল কথোপকথনে করা।
  */
 export default async function DocPage({ params }: { params: Promise<Params> }) {

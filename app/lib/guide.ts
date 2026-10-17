@@ -6,7 +6,7 @@ import { toBnDigits } from "./dates";
  * server-only — `fs` দিয়ে build-এর সময় `guide/` পড়ে। client component এখান থেকে
  * শুধু `import type` নিতে পারে; মান import করলে `fs` bundle-এ ঢুকে build ভাঙবে।
  *
- * `guide/` = এই সাইটের নিজের ১৯টা অধ্যায় হুবহু, চার স্তরে নির্ভরতার ক্রমে
+ * `guide/` = এই সাইটের নিজের ২২টা অধ্যায়, চার স্তরে নির্ভরতার ক্রমে
  * (`guide/<nn>-<স্তর>/<nn>-<slug>.md`)। কাজের লেখায় `(ডক ০৩.০১)` মানে স্তর ০৩-এর
  * ডক ০১ — ফাইলটা না থাকলে build ভাঙে (`plan.ts`)।
  */
